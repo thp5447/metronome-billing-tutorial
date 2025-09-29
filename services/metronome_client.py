@@ -2,7 +2,7 @@
 Metronome SDK wrapper
 
 Centralizes calls to the Metronome SDK so the Flask app
-can stay thin and consistent. This file will grow in later episodes.
+can stay thin and consistent. 
 
 
 Notes
@@ -74,6 +74,19 @@ class MetronomeClient:
         self.client.v1.usage.ingest(usage=[event])
 
     # ---- Customers ----
+    def create_customer(self, *, name: str, ingest_alias: Optional[str] = None) -> Dict:
+        """Create a new customer.
+
+        - If `ingest_alias` is provided, attach it.
+        - Otherwise, create the customer without aliases.
+        """
+        payload: Dict = {"name": name}
+        if ingest_alias:
+            payload["ingest_aliases"] = [ingest_alias]
+
+        resp = self.client.v1.customers.create(**payload)
+        return resp.data.model_dump() if hasattr(resp, "data") else {}
+
     def get_customer_by_ingest_alias(self, ingest_alias: str) -> Optional[Dict]:
         """Retrieve a customer by ingest alias (None if not found)."""
         resp = self.client.v1.customers.list(ingest_alias=ingest_alias)
@@ -234,6 +247,66 @@ class MetronomeClient:
 
         resp = self.client.v1.contracts.create(**payload)
         return resp.data.model_dump() if hasattr(resp, "data") else {}
+
+    # ---- Usage ----
+    
+
+    def get_usage_grouped(
+        self,
+        *,
+        customer_id: str,
+        billable_metric_id: str,
+        start_time: datetime,
+        end_time: datetime,
+        group_key: str,
+        window_size: str = "DAY",
+    ) -> List[Dict]:
+        """Return grouped usage for a metric by the provided group key.
+
+        Uses the `/v1/usage/groups` endpoint via SDK `usage.list_with_groups`.
+        Items contain `group_key`, `group_value`, and `value`.
+        """
+        def _fmt(dt: datetime) -> str:
+            return dt.astimezone(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        page = self.client.v1.usage.list_with_groups(
+            billable_metric_id=billable_metric_id,
+            customer_id=customer_id,
+            window_size=window_size,
+            starting_on=_fmt(start_time),
+            ending_before=_fmt(end_time),
+            group_by={"key": group_key},
+        )
+        data = getattr(page, "data", []) or []
+        # SDK returns Pydantic models; convert to plain dicts
+        return [item.model_dump() for item in data]
+
+    # ---- Pricing / Rates ----
+    def get_rate_card_prices_by_tier(
+        self,
+        *,
+        rate_card_id: str,
+        product_id: str,
+        at: str,
+        group_key: str = "image_type",
+    ) -> Dict[str, int]:
+        """Return {tier: price_cents} for entitled FLAT rates on the card.
+
+        price lives at `rate.price` and
+        group value at `pricing_group_values[group_key]`.
+        """
+        items = (
+            self.client.v1.contracts.rate_cards.rates.list(
+                at=at,
+                rate_card_id=rate_card_id,
+                selectors=[{"product_id": product_id}],
+            ).data
+            or []
+        )
+        return {r.pricing_group_values[group_key]: int(r.rate.price) for r in items if r.entitled}
+
+    # For production-grade spend dashboards, prefer
+    # customers.invoices.list_breakdowns. See README for guidance.
 
 
     

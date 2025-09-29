@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nova Billing Demo</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-top">
+        <div class="logo">
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="45" fill="none" stroke="#a3d5e0" stroke-width="2"/>
+            <circle cx="50" cy="50" r="35" fill="none" stroke="#6bb8cc" stroke-width="2"/>
+            <circle cx="50" cy="50" r="25" fill="none" stroke="#3498b4" stroke-width="2"/>
+            <circle cx="50" cy="50" r="15" fill="none" stroke="#0891b2" stroke-width="2"/>
+            <circle cx="50" cy="50" r="8" fill="#0891b2"/>
+          </svg>
+          <h1>Nova</h1>
+        </div>
+      </div>
+      <div class="tagline">Steps: Customer → Contract → Generate images (send events) → See usage</div>
+    </div>
+
+    <!-- Customer Section -->
+    <div class="card">
+      <h2 class="section-title">Customer</h2>
+      <div class="form-row">
+        <input id="customerNameInput" class="input" type="text" placeholder="Customer name" value="Nova Demo Customer" required />
+        <input id="ingestAliasInput" class="input" type="text" placeholder="Ingest alias (optional)" />
+        <button id="createCustomerBtn" class="btn btn-primary">Create Customer</button>
+      </div>
+      <div class="hint">Creates a demo customer in your Metronome account. Ingest alias is optional and must be unique.</div>
+    </div>
+
+    <!-- Contract Section -->
+    <div class="card contract-card">
+      <div class="card-row">
+        <h2 class="section-title">Contract</h2>
+        <button id="createContractBtn" class="btn btn-primary" disabled>Create Contract</button>
+      </div>
+      <div id="contractHint" class="hint">Requires pricing to be set up (POST /api/pricing). Uses configured start date.</div>
+    </div>
+
+    <!-- Generation Section -->
+    <div class="generation-section">
+      <h2 class="section-title">Generate images (send events)</h2>
+
+      <div class="tiers">
+        <div class="tier">
+          <div class="tier-name">Standard</div>
+          <div class="tier-price">{{ prices['standard'] }}</div>
+        </div>
+        <div class="tier">
+          <div class="tier-name">High-Res</div>
+          <div class="tier-price">{{ prices['high-res'] }}</div>
+        </div>
+        <div class="tier">
+          <div class="tier-name">Ultra</div>
+          <div class="tier-price">{{ prices['ultra'] }}</div>
+        </div>
+      </div>
+
+      <div class="generate-buttons">
+        <button class="generate-btn" data-tier="standard" aria-label="Send usage event for Standard tier">Generate Standard</button>
+        <button class="generate-btn" data-tier="high-res" aria-label="Send usage event for High-Res tier">Generate High-Res</button>
+        <button class="generate-btn" data-tier="ultra" aria-label="Send usage event for Ultra tier">Generate Ultra</button>
+      </div>
+      <div class="hint">Requires a contract. We send a unique transaction_id for idempotency.</div>
+    </div>
+
+    <!-- Usage Section -->
+    <div class="usage-section">
+      <h2 class="section-title">Today's Usage</h2>
+
+      <div class="usage-list" id="usageList">
+        <div class="usage-item t-standard">
+          <div>
+            <span class="usage-label">Standard</span>
+            <span class="usage-count" id="standardCount">0 images</span>
+          </div>
+          <div class="usage-amount" id="standardAmount">$0.00</div>
+        </div>
+        <div class="usage-item t-high-res">
+          <div>
+            <span class="usage-label">High-Res</span>
+            <span class="usage-count" id="high-resCount">0 images</span>
+          </div>
+          <div class="usage-amount" id="high-resAmount">$0.00</div>
+        </div>
+        <div class="usage-item t-ultra">
+          <div>
+            <span class="usage-label">Ultra</span>
+            <span class="usage-count" id="ultraCount">0 images</span>
+          </div>
+          <div class="usage-amount" id="ultraAmount">$0.00</div>
+        </div>
+      </div>
+
+      <div class="usage-total">
+        <div class="usage-label">Total</div>
+        <div class="usage-amount" id="totalAmount">$0.00</div>
+      </div>
+      <div class="hint">Window: UTC midnight to midnight. Values may be eventually consistent.</div>
+    </div>
+  </div>
+
+  <!-- Success Message -->
+  <div class="success-message" id="successMessage">Action completed successfully!</div>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

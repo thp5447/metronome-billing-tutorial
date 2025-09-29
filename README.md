@@ -6,6 +6,7 @@ This repository accompanies the [YouTube usage-based billing tutorial](https://y
 - Episode 4 (Billable metrics endpoint)
 - Episode 5 (Product and Rate Card endpoint)
 - Episode 6 (Contract endpoint)
+- Episode 7: One‑page UI + Create Customer (single metric with dimensional pricing)
 
 ## Prerequisites
 
@@ -45,6 +46,22 @@ cp .env.example .env
 #   METRONOME_BEARER_TOKEN=<your_api_key>
 #   DEMO_CUSTOMER_ALIAS=<your_ingest_alias>
 ```
+
+5) Run the app and open the UI:
+
+```bash
+python app.py
+# Visit http://localhost:5000
+```
+
+Quick flow in the browser (final episode):
+- Click “Create Customer” to create a demo customer in your Metronome account.
+- If you haven’t already, run pricing setup once in a terminal:
+  - `curl -sS -X POST http://localhost:5000/api/metrics | jq`
+  - `curl -sS -X POST http://localhost:5000/api/pricing | jq`
+- Click “Create Contract” to bind pricing to the customer.
+- Use the “Generate” buttons to send usage; the “Today’s Usage” panel updates automatically.
+
 
 ## Run the API check (Episode 2)
 
@@ -193,6 +210,41 @@ Notes:
 - `/api/contract` expects `rate_card_id` from Episode 5 and looks up the customer by `DEMO_CUSTOMER_ALIAS`.
 - Customer creation is explicit in the dashboard; the API does not auto-create customers.
 - The state file `.metronome_config.json` tracks `customer_id` and `contract_id` for reuse.
+
+## Episode 7: One‑page UI + Create Customer
+
+What’s new:
+- `GET /` — renders the demo page (no framework).
+- `POST /api/customers` — creates (or reuses by alias) a demo customer in your Metronome account and stores the `customer_id` locally. Accepts `{ name?, ingest_alias? }`.
+- `GET /api/status` — returns local IDs to enable/disable UI buttons.
+- `GET /api/usage` — returns today’s usage grouped by `image_type` via the SDK’s `usage.list_with_groups`.
+
+Flow:
+1) Run Episode 4 + 5 setup once (`/api/metrics`, `/api/pricing`).
+2) In the browser: Create Customer → Create Contract.
+3) Generate images at Standard/High‑Res/Ultra; watch “Today’s Usage” update.
+
+Implementation notes:
+- One billable metric with `group_keys=[["image_type"]]` and dimensional pricing via `pricing_group_values`.
+- Spend shown in the UI is computed as `usage_count × unit_price` for teaching purposes. For production, use invoice breakdowns (`customers.invoices.list_breakdowns`) to power spend‑over‑time with discounts/credits and non‑flat pricing reflected.
+
+
+## Local State & Caching Behavior (Important)
+
+This demo persists a few non‑secret IDs and small bits of metadata in a local file: `.metronome_config.json`. 
+
+To fully reset the demo, delete the entire `.metronome_config.json` file. You’ll need to run the setup steps again (pricing, customer, contract).This file is local-only and safe to delete at any time.
+
+What’s stored
+- `metric_id`, `product_id`, `rate_card_id` — created by the setup routes
+- `customer_id`, `contract_id` — created by the UI actions
+- `prices_by_tier` — a cached map of `{tier: price_cents}` fetched once from the active rate card
+
+Implications
+- Idempotency: the setup routes reuse stored IDs when present, so runs are fast and repeatable.
+- Pricing cache: `prices_by_tier` is fetched the first time the UI loads after pricing is created and then cached. It is NOT auto‑refreshed if you edit rates in the dashboard.
+- Refreshing prices: delete the `prices_by_tier` key (or the entire `.metronome_config.json` file) and reload the page to fetch fresh prices from the rate card.
+- Safety: `.metronome_config.json` is ignored by Git; it contains no credentials.
 
 
 ## Viewer Guide
