@@ -1,0 +1,207 @@
+{
+  "metric_name": "Raindrop Data Ingress2",
+  "group_keys": [
+    "region",
+    "provider"
+  ],
+  "property_filters": [
+    {
+      "name": "region",
+      "exists": true
+    },
+    {
+      "name": "provider",
+      "exists": true
+    }
+  ],
+  "product": {
+    "name": "Data Ingress Product",
+    "type": "USAGE"
+  },
+  "rate_card": {
+    "name": "Data Ingress Rate Card",
+    "effective_at": "2025-11-16T00:00:00Z",
+    "rates": [
+      {
+        "region": "us-east-1",
+        "provider": "aws",
+        "price_cents": 9
+      },
+      {
+        "region": "us-east-1",
+        "provider": "gcp",
+        "price_cents": 11
+      },
+      {
+        "region": "us-east-1",
+        "provider": "azure",
+        "price_cents": 10
+      },
+      {
+        "region": "us-west-2",
+        "provider": "aws",
+        "price_cents": 10
+      },
+      {
+        "region": "us-west-2",
+        "provider": "gcp",
+        "price_cents": 12
+      },
+      {
+        "region": "us-west-2",
+        "provider": "azure",
+        "price_cents": 11
+      },
+      {
+        "region": "us-central1",
+        "provider": "gcp",
+        "price_cents": 13
+      },
+      {
+        "region": "us-central1",
+        "provider": "aws",
+        "price_cents": 12
+      },
+      {
+        "region": "us-central1",
+        "provider": "azure",
+        "price_cents": 14
+      },
+      {
+        "region": "eu-west-1",
+        "provider": "aws",
+        "price_cents": 15
+      },
+      {
+        "region": "eu-west-1",
+        "provider": "gcp",
+        "price_cents": 16
+      },
+      {
+        "region": "eu-west-1",
+        "provider": "azure",
+        "price_cents": 17
+      },
+      {
+        "region": "eu-central-1",
+        "provider": "aws",
+        "price_cents": 14
+      },
+      {
+        "region": "eu-central-1",
+        "provider": "gcp",
+        "price_cents": 15
+      },
+      {
+        "region": "eu-central-1",
+        "provider": "azure",
+        "price_cents": 15
+      },
+      {
+        "region": "ap-southeast-1",
+        "provider": "aws",
+        "price_cents": 18
+      },
+      {
+        "region": "ap-southeast-1",
+        "provider": "gcp",
+        "price_cents": 20
+      },
+      {
+        "region": "ap-southeast-1",
+        "provider": "azure",
+        "price_cents": 19
+      },
+      {
+        "region": "ap-northeast-1",
+        "provider": "aws",
+        "price_cents": 17
+      },
+      {
+        "region": "ap-northeast-1",
+        "provider": "gcp",
+        "price_cents": 18
+      },
+      {
+        "region": "ap-northeast-1",
+        "provider": "azure",
+        "price_cents": 19
+      },
+      {
+        "region": "sa-east-1",
+        "provider": "aws",
+        "price_cents": 22
+      },
+      {
+        "region": "sa-east-1",
+        "provider": "gcp",
+        "price_cents": 23
+      },
+      {
+        "region": "sa-east-1",
+        "provider": "azure",
+        "price_cents": 22
+      },
+      {
+        "region": "ca-central-1",
+        "provider": "aws",
+        "price_cents": 12
+      },
+      {
+        "region": "ca-central-1",
+        "provider": "gcp",
+        "price_cents": 13
+      },
+      {
+        "region": "ca-central-1",
+        "provider": "azure",
+        "price_cents": 14
+      },
+      {
+        "region": "me-south-1",
+        "provider": "aws",
+        "price_cents": 23
+      },
+      {
+        "region": "me-south-1",
+        "provider": "gcp",
+        "price_cents": 25
+      },
+      {
+        "region": "me-south-1",
+        "provider": "azure",
+        "price_cents": 24
+      },
+      {
+        "region": "af-south-1",
+        "provider": "aws",
+        "price_cents": 26
+      },
+      {
+        "region": "af-south-1",
+        "provider": "gcp",
+        "price_cents": 27
+      },
+      {
+        "region": "af-south-1",
+        "provider": "azure",
+        "price_cents": 26
+      },
+      {
+        "region": "ap-south-1",
+        "provider": "aws",
+        "price_cents": 15
+      },
+      {
+        "region": "ap-south-1",
+        "provider": "gcp",
+        "price_cents": 16
+      },
+      {
+        "region": "ap-south-1",
+        "provider": "azure",
+        "price_cents": 17
+      }
+    ]
+  }
+}

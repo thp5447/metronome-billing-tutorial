@@ -12,11 +12,6 @@ What this showcases (SDK-first):
 - Ingest usage events with idempotency (POST /api/generate)
 - Retrieve grouped usage for one billable metric via `usage.list_with_groups`
 
-Design highlights:
-- One billable metric with `group_keys=[["image_type"]]`
-- Dimensional pricing via `pricing_group_values` (standard | high-res | ultra)
-- Local state `.metronome_config.json` for idempotent setup across runs
-
 UI endpoints:
 - GET /              → renders the demo page
 - GET /api/usage     → today's usage grouped by image_type
@@ -146,53 +141,6 @@ def index():
         prices = {t: "—" for t in BILLABLE_PRICES.keys()}
     return render_template("index.html", prices=prices)
 
-'''
-original with hard coded metrics
-def _ensure_metric() -> dict:
-    """Create or reuse the Episode 4 metric and persist its ID.
-
-    Simple idempotent behavior:
-    - If a stored metric_id exists and is retrievable → reuse.
-    - Else look up by name and reuse the first match → persist id.
-    - Else create anew → persist id.
-    """
-    state = _load_state()
-
-    # 1) Try stored id first
-    metric_id = state.get("metric_id")
-    if metric_id:
-        existing = client.retrieve_billable_metric(metric_id)
-        if existing:
-            logger.info("Using existing metric from state: %s", metric_id)
-            return existing
-
-    # 2) Try to find by name (non-archived)
-    metrics = client.list_billable_metrics()
-    matches = [m for m in metrics if m.get("name") == BILLABLE_METRIC_NAME]
-    if matches:
-        m = matches[0]
-        state["metric_id"] = m.get("id")
-        _save_state(state)
-        logger.info("Linked existing metric by name: %s -> %s", BILLABLE_METRIC_NAME, m.get("id"))
-        return m
-
-    # 3) Create a new metric
-    created = client.create_billable_metric(
-        name=BILLABLE_METRIC_NAME,
-        event_type=EVENT_TYPE,
-        aggregation_type="SUM",
-        aggregation_key="num_images",
-        group_keys=[list(x) for x in BILLABLE_GROUP_KEYS],
-        property_filters=[
-            {"name": "image_type", "exists": True},
-            {"name": "num_images", "exists": True},
-        ],
-    )
-    state["metric_id"] = created.get("id")
-    _save_state(state)
-    logger.info("Created metric: %s", created.get("id"))
-    return created
-'''
 def _ensure_metric(
     name: str,
     event_type: str = None,
@@ -225,26 +173,9 @@ def _ensure_product_and_rate_card(
         metric: dict,
         product_name: str,
         rate_name: str):
-    """Minimal guard: trust state IDs if present; else create.
-
+    """
     Returns (product_id, rate_card_id, created_product, created_rate_card).
     """
-    #   Ignoring state for now
-
-    '''
-
-    state = _load_state()
-    product_id = state.get("product_id")
-    rate_card_id = state.get("rate_card_id")
-
-    if product_id and rate_card_id:
-        logger.info(
-            "Reusing pricing objects from state: product_id=%s, rate_card_id=%s",
-            product_id,
-            rate_card_id,
-        )
-        return product_id, rate_card_id, False, False
-'''
     created_product = False
     created_rate_card = False
     # Create missing pieces only
@@ -275,16 +206,15 @@ def _ensure_product_and_rate_card(
 
 
 
-@app.post("/api/generate")
-def generate_image():
+@app.post("/api/ingress")
+def data_ingress():
     """Accepts JSON and emits a usage event.
 
 
     Quick curl:
-      curl -sS -X POST http://localhost:5000/api/generate \
+      curl -sS -X POST http://localhost:5000/api/ingress \
         -H 'Content-Type: application/json' \
         -d '{"tier":"ultra","transaction_id":"ep3-demo-001","model":"nova-v2","region":"us-west-2"}'
-
 
     MY CURL
     
@@ -421,27 +351,11 @@ def setup_metric():
 
 @app.post("/api/pricing")
 def setup_pricing():
-    """Create product + rate card + flat rates per image_type.
-    New curl: 
-    curl -sS -X POST http://localhost:5050/api/pricing \
-  -H "Content-Type: application/json" \
-  -d '{
-        
-        "name": "Raindrop Data Ingress2",
-        "group_keys": ["region", "provider"],
-        "property_filters": [
-          {"name": "region", "exists": true},
-          {"name": "provider", "exists": true},
-          {"name": "bytes_ingested", "exists": true}
-        ]
-      }'
-
+    """Create product + rate card + flat rates.
+    Quick Curl:
       curl -sS -X POST http://localhost:5050/api/pricing \
         -H "Content-Type: application/json" \
         -d @product_and_rates.json
-
-    Quick curl:
-      curl -sS -X POST http://localhost:5000/api/pricing | jq
     """
     try:
         body = request.get_json(force=True)
@@ -471,15 +385,6 @@ def setup_pricing():
                 )
                 rid = r.get("id") or r.get("rate_id")
                 created_rates[str(rate["region"])+', '+rate["provider"]] = {"id": rid, "price_cents": int(rate["price_cents"])}
-
-        # Persist IDs so future runs can reuse the same product/rate card
-        # state = _load_state()
-        # state.update({
-        #     "metric_id": billable_metric_id,
-        #     "product_id": product_id,
-        #     "rate_card_id": rate_card_id,
-        # })
-        # _save_state(state)
 
  
         payload = {
