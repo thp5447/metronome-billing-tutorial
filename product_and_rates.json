@@ -1,0 +1,38 @@
+{
+  "metric_name": "Raindrop Data Ingress2",
+  "group_keys": ["region", "provider"],
+  "property_filters": [
+    {"name": "region", "exists": true},
+    {"name": "provider", "exists": true}
+  ],
+  "product": {
+    "name": "Data Ingress Product",
+    "type": "USAGE"
+  },
+  "rate_card": {
+    "name": "Data Ingress Rate Card",
+    "rates": [
+      {
+        "region": "us-east-1",
+        "provider": "aws",
+        "price_cents": 10
+      },
+      {
+        "region": "us-east-1",
+        "provider": "gcp",
+        "price_cents": 12
+      },
+      {
+        "region": "us-west-2",
+        "provider": "aws",
+        "price_cents": 11
+      },
+      {
+        "region": "us-west-2",
+        "provider": "gcp",
+        "price_cents": 13
+      }
+    ]
+  }
+}
+

@@ -72,7 +72,7 @@ def _load_state() -> dict:
         pass
     return {}
 
-
+ 
 def _save_state(state: dict) -> None:
     """Persist local IDs/state to disk for idempotent setup."""
     try:
@@ -195,30 +195,43 @@ def _ensure_metric() -> dict:
 '''
 def _ensure_metric(
     name: str,
-    event_type: str,
-    aggregation_type: str,
-    aggregation_key: str,
-    group_keys: list,
-    property_filters: list
+    event_type: str = None,
+    aggregation_type: str = None,
+    aggregation_key: str = None,
+    group_keys: list = None,
+    property_filters: list = None
 ) -> dict:
-    
-    created = client.create_billable_metric(
-        name=name,
-        event_type=event_type,
-         aggregation_type=aggregation_type,
-         aggregation_key=aggregation_key,
-         group_keys=[list(x) for x in group_keys],
-         property_filters=property_filters,
-    )
+    # 2) Try to find by name (non-archived)
+    metrics = client.list_billable_metrics()
+    matches = [m for m in metrics if m.get("name") == name]
+    if matches:
+        m = matches[0]
+        logger.info("Linked existing metric by name: %s -> %s", name, m.get("id"))
+        return m
+    if all([event_type, aggregation_type, aggregation_key, group_keys, property_filters]):
+        created = client.create_billable_metric(
+            name=name,
+            event_type=event_type,
+            aggregation_type=aggregation_type,
+            aggregation_key=aggregation_key,
+            group_keys=[list(x) for x in group_keys],
+            property_filters=property_filters,
+        )
     logger.info("Created metric: %s", created.get("id"))
     return created
 
 
-def _ensure_product_and_rate_card(billable_metric_id: str):
+def _ensure_product_and_rate_card(
+        metric: dict,
+        product_name: str):
     """Minimal guard: trust state IDs if present; else create.
 
     Returns (product_id, rate_card_id, created_product, created_rate_card).
     """
+    #   Ignoring state for now
+
+    '''
+
     state = _load_state()
     product_id = state.get("product_id")
     rate_card_id = state.get("rate_card_id")
@@ -230,32 +243,35 @@ def _ensure_product_and_rate_card(billable_metric_id: str):
             rate_card_id,
         )
         return product_id, rate_card_id, False, False
-
+'''
     created_product = False
     created_rate_card = False
-
     # Create missing pieces only
-    if not product_id:
-        pricing_group_key = [g[0] for g in BILLABLE_GROUP_KEYS]
-        product = client.create_product(
-            name=PRODUCT_NAME,
-            billable_metric_id=billable_metric_id,
-            pricing_group_key=pricing_group_key,
-            presentation_group_key=pricing_group_key,
-        )
-        product_id = product.get("id")
-        if not product_id:
-            raise RuntimeError("Failed to create product")
-        logger.info("Created product: %s", product_id)
-        created_product = True
+    #if not product_id:
+    pricing_group_key = metric['group_keys'][0]
+    print(f'\n\n{pricing_group_key}\n\n',flush=True)
+    product = client.create_product(
+        name=product_name,
+        billable_metric_id=metric['id'],
+        pricing_group_key=pricing_group_key,
+        presentation_group_key=pricing_group_key,
+    )
 
+    print(f'\n\n{metric["group_keys"]}\n\n',flush=True)
+
+    product_id = product.get("id")
+    if not product_id:
+        raise RuntimeError("Failed to create product")
+    logger.info("Created product: %s", product_id)
+    created_product = True
+
+   # if not rate_card_id:
+    rate_card = client.create_rate_card(name=RATE_CARD_NAME)
+    rate_card_id = rate_card.get("id") or rate_card.get("rate_card_id")
     if not rate_card_id:
-        rate_card = client.create_rate_card(name=RATE_CARD_NAME)
-        rate_card_id = rate_card.get("id") or rate_card.get("rate_card_id")
-        if not rate_card_id:
-            raise RuntimeError("Failed to create rate card")
-        logger.info("Created rate card: %s", rate_card_id)
-        created_rate_card = True
+        raise RuntimeError("Failed to create rate card")
+    logger.info("Created rate card: %s", rate_card_id)
+    created_rate_card = True
 
     return product_id, rate_card_id, created_product, created_rate_card
 
@@ -349,41 +365,6 @@ def generate_image():
         return jsonify({"error": f"Failed to send usage: {e}"}), 500
 
 
-'''
-original post for billable metric with hard-coding.
-
-@app.post("/api/metrics")
-def setup_metric():
-    """Create the Episode 4 billable metric.
-
-    Hardcoded to our demo defaults:
-    - name: BILLABLE_METRIC_NAME
-    - event_type: EVENT_TYPE
-    - aggregation: SUM over "num_images"
-    - group_keys: BILLABLE_GROUP_KEYS (from config)
-    - property_filters: require image_type and num_images to exist
-
-    Quick curl:
-      curl -sS -X POST http://localhost:5000/api/metrics | jq
-    """
-    try:
-        # Ensure or create the billable metric; idempotent and persisted
-        metric = _ensure_metric()
-        logger.info(
-            "Billable metric ready id=%s name=%s",
-            metric.get("id"),
-            metric.get("name"),
-        )
-        return jsonify({
-            "success": True,
-            "metric_name": BILLABLE_METRIC_NAME,
-            "metric": metric,
-        }), 200
-    except Exception as e:
-        logger.exception("Failed to create billable metric")
-        return jsonify({"error": f"Failed to create metric: {e}"}), 500
-'''
-
 # Create a billable metric by passing in data rather than hard coded
 @app.post("/api/metrics")
 def setup_metric():
@@ -394,10 +375,10 @@ def setup_metric():
       curl -sS -X POST http://localhost:5050/api/metrics \
         -H "Content-Type: application/json" \
         -d '{
-              "name": "my_metric",
+              "name": "Raindrop Data Ingress2",
               "event_type": "data_ingress",
               "aggregation": {"type": "sum", "field": "bytes_ingested"},
-              "group_keys": [["region"], ["provider"]],
+              "group_keys": [["region", "provider"]],
               "property_filters": [{"name": "bytes_ingested", "exists": true},
                                     {"name": "region", "exists": true},
                                     {"name": "provider", "exists": true}
@@ -443,18 +424,33 @@ def setup_metric():
 @app.post("/api/pricing")
 def setup_pricing():
     """Create product + rate card + flat rates per image_type.
+    New curl: 
+    curl -sS -X POST http://localhost:5050/api/pricing \
+  -H "Content-Type: application/json" \
+  -d '{
+        
+        "name": "Raindrop Data Ingress2",
+        "group_keys": ["region", "provider"],
+        "property_filters": [
+          {"name": "region", "exists": true},
+          {"name": "provider", "exists": true},
+          {"name": "bytes_ingested", "exists": true}
+        ]
+      }'
 
     Quick curl:
       curl -sS -X POST http://localhost:5000/api/pricing | jq
     """
     try:
+        body = request.get_json(force=True)
+        name=body.get("metric_name")
         # Ensure we have a metric and its ID
-        metric = _ensure_metric()
+
+        metric = _ensure_metric(name)
         billable_metric_id = metric.get("id")
+        product_name=body.get("product").get("name")
         # Ensure product + rate card (reuse from state when possible)
-        product_id, rate_card_id, created_product, created_rate_card = _ensure_product_and_rate_card(
-            billable_metric_id
-        )
+        product_id, rate_card_id, created_product, created_rate_card = _ensure_product_and_rate_card(metric,product_name)
 
         # Add per-tier rates only when we just created either the product or rate card
         created_rates = {}
