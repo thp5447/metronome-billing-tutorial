@@ -23,7 +23,6 @@ UI endpoints:
 - GET /api/status    → local IDs to gate UI buttons
 
 """
-
 import logging
 from datetime import datetime, timezone, timedelta
 from collections import Counter
@@ -250,6 +249,10 @@ def generate_image():
       curl -sS -X POST http://localhost:5000/api/generate \
         -H 'Content-Type: application/json' \
         -d '{"tier":"ultra","transaction_id":"ep3-demo-001","model":"nova-v2","region":"us-west-2"}'
+
+
+    MY CURL
+    
     """
     data = request.get_json(silent=True) or {}
 
@@ -264,8 +267,12 @@ def generate_image():
         }), 400
 
     # Validate tier against configured taxonomy (no state dependency)
+    prop=data.get("properties",{})
+    size=(prop.get("size") or "").strip().lower()
+    warehouse = (prop.get("warehouse") or "").strip().lower()
+    hours=(prop.get("hours") or 1).strip().lower()
     allowed = set(BILLABLE_PRICES.keys())
-    tier = (data.get("tier") or "").strip().lower()
+    tier = (size,warehouse)
     if tier not in allowed:
         return jsonify({
             "error": "Invalid or missing 'tier'",
@@ -276,10 +283,9 @@ def generate_image():
 
     # Build properties as strings per Metronome guidelines
     properties = {
-        "image_type": tier,
-        "num_images": "1",
-        "model": str(data.get("model", "nova-v2")),
-        "region": str(data.get("region", "us-west-2")),
+        "size": size,
+        "warehouse": warehouse,
+        "hours": hours,  # whatever you want to track/count
     }
 
   
@@ -413,6 +419,14 @@ def setup_pricing():
 @app.post("/api/customers")
 def create_customer():
     """Create a demo customer and persist its ID locally.
+    curl -i -X POST http://127.0.0.1:5050/api/customers \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "name":"Sabre Inc.", 
+        "ingest_alias": "rcalifornia@sabre.com"
+        }'
+    
+
 
     Body: {"name": "Optional display name", "ingest_alias": "Optional alias"}
     Returns: {"id": customer_id, "name": name, "ingest_alias": alias?}
@@ -562,7 +576,7 @@ def get_usage():
             billable_metric_id=metric_id,
             start_time=start,
             end_time=end,
-            group_key="image_type",
+            group_key=["warehouse","size"],
             window_size="DAY",
         )
     except Exception:
@@ -599,5 +613,20 @@ def get_usage():
  
 
 if __name__ == "__main__":
-    logger.info("Starting Metronome Demo API on http://localhost:5000")
-    app.run(debug=True, port=5000)
+    logger.info("Starting Metronome Demo API on http://localhost:5050")
+    app.run(debug=True, port=5050)
+'''
+curl -i -X POST http://127.0.0.1:5050/api/generate \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "event_type": "Computing",
+        "properties": {
+          "warehouse": "aws",
+          "size": "small",
+          "hours": 744
+        },
+        "transaction_id": "ep3-demo-004",
+        "customer_id": "demo_mscott@dunder.com",
+        "timestamp": "2025-11-14T19:49:35.605Z"
+      }'
+'''

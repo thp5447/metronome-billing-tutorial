@@ -16,6 +16,13 @@ from datetime import datetime, timezone
 from typing import Dict, Optional, List
 
 from metronome import Metronome
+import sys
+import os
+
+# Add the parent directory of this file to sys.path
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# Now you can import your config
 from config import BILLABLE_GROUP_KEYS
 
 
