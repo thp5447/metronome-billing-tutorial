@@ -19,7 +19,7 @@ Design highlights:
 
 UI endpoints:
 - GET /              → renders the demo page
-- GET /api/usage     → today’s usage grouped by image_type
+- GET /api/usage     → today's usage grouped by image_type
 - GET /api/status    → local IDs to gate UI buttons
 
 """
@@ -146,7 +146,8 @@ def index():
         prices = {t: "—" for t in BILLABLE_PRICES.keys()}
     return render_template("index.html", prices=prices)
 
-
+'''
+original with hard coded metrics
 def _ensure_metric() -> dict:
     """Create or reuse the Episode 4 metric and persist its ID.
 
@@ -189,6 +190,26 @@ def _ensure_metric() -> dict:
     )
     state["metric_id"] = created.get("id")
     _save_state(state)
+    logger.info("Created metric: %s", created.get("id"))
+    return created
+'''
+def _ensure_metric(
+    name: str,
+    event_type: str,
+    aggregation_type: str,
+    aggregation_key: str,
+    group_keys: list,
+    property_filters: list
+) -> dict:
+    
+    created = client.create_billable_metric(
+        name=name,
+        event_type=event_type,
+         aggregation_type=aggregation_type,
+         aggregation_key=aggregation_key,
+         group_keys=[list(x) for x in group_keys],
+         property_filters=property_filters,
+    )
     logger.info("Created metric: %s", created.get("id"))
     return created
 
@@ -328,6 +349,9 @@ def generate_image():
         return jsonify({"error": f"Failed to send usage: {e}"}), 500
 
 
+'''
+original post for billable metric with hard-coding.
+
 @app.post("/api/metrics")
 def setup_metric():
     """Create the Episode 4 billable metric.
@@ -358,7 +382,63 @@ def setup_metric():
     except Exception as e:
         logger.exception("Failed to create billable metric")
         return jsonify({"error": f"Failed to create metric: {e}"}), 500
+'''
 
+# Create a billable metric by passing in data rather than hard coded
+@app.post("/api/metrics")
+def setup_metric():
+    """
+    Create a billable metric with user-provided parameters.
+
+    Example curl with data ingress:
+      curl -sS -X POST http://localhost:5050/api/metrics \
+        -H "Content-Type: application/json" \
+        -d '{
+              "name": "my_metric",
+              "event_type": "data_ingress",
+              "aggregation": {"type": "sum", "field": "bytes_ingested"},
+              "group_keys": [["region"], ["provider"]],
+              "property_filters": [{"name": "bytes_ingested", "exists": true},
+                                    {"name": "region", "exists": true},
+                                    {"name": "provider", "exists": true}
+                                    ]
+            }'
+    """
+
+    try:
+        body = request.get_json(force=True)
+
+        # Extract user-provided parameters
+        name = body.get("name")
+        event_type = body.get("event_type")
+        aggregation = body.get("aggregation")
+        group_keys = body.get("group_keys", [])
+        property_filters = body.get("property_filters", [])
+
+        if not name or not event_type or not aggregation:
+            return jsonify({
+                "error": "Missing required fields: name, event_type, aggregation"
+            }), 400
+
+        # Create/ensure metric using the supplied values
+        metric = _ensure_metric(
+            name=name,
+            event_type=event_type,
+            aggregation_type=aggregation.get("type", "SUM"),
+            aggregation_key=aggregation.get("field", ""),
+            group_keys=group_keys,
+            property_filters=property_filters,
+        )
+
+        return jsonify({
+            "success": True,
+            "metric_name": name,
+            "metric": metric,
+        }), 200
+
+    except Exception as e:
+        logger.exception("Failed to create billable metric")
+        return jsonify({"error": f"Failed to create metric: {e}"}), 500
 
 @app.post("/api/pricing")
 def setup_pricing():
@@ -423,11 +503,10 @@ def create_customer():
   -H 'Content-Type: application/json' \
   -d '{
         "name":"Sabre Inc.", 
-        "ingest_alias": "rcalifornia@sabre.com"
+        "ingest_alias": "rcalif@sabre.com"
         }'
     
-
-
+        
     Body: {"name": "Optional display name", "ingest_alias": "Optional alias"}
     Returns: {"id": customer_id, "name": name, "ingest_alias": alias?}
     """
