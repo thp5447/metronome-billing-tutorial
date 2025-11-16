@@ -11,6 +11,7 @@
   },
   "rate_card": {
     "name": "Data Ingress Rate Card",
+    "effective_at": "2025-11-16T00:00:00Z",
     "rates": [
       {
         "region": "us-east-1",

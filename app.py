@@ -223,7 +223,8 @@ def _ensure_metric(
 
 def _ensure_product_and_rate_card(
         metric: dict,
-        product_name: str):
+        product_name: str,
+        rate_name: str):
     """Minimal guard: trust state IDs if present; else create.
 
     Returns (product_id, rate_card_id, created_product, created_rate_card).
@@ -249,15 +250,12 @@ def _ensure_product_and_rate_card(
     # Create missing pieces only
     #if not product_id:
     pricing_group_key = metric['group_keys'][0]
-    print(f'\n\n{pricing_group_key}\n\n',flush=True)
     product = client.create_product(
         name=product_name,
         billable_metric_id=metric['id'],
         pricing_group_key=pricing_group_key,
         presentation_group_key=pricing_group_key,
     )
-
-    print(f'\n\n{metric["group_keys"]}\n\n',flush=True)
 
     product_id = product.get("id")
     if not product_id:
@@ -266,7 +264,7 @@ def _ensure_product_and_rate_card(
     created_product = True
 
    # if not rate_card_id:
-    rate_card = client.create_rate_card(name=RATE_CARD_NAME)
+    rate_card = client.create_rate_card(name=rate_name)
     rate_card_id = rate_card.get("id") or rate_card.get("rate_card_id")
     if not rate_card_id:
         raise RuntimeError("Failed to create rate card")
@@ -438,6 +436,10 @@ def setup_pricing():
         ]
       }'
 
+      curl -sS -X POST http://localhost:5050/api/pricing \
+        -H "Content-Type: application/json" \
+        -d @product_and_rates.json
+
     Quick curl:
       curl -sS -X POST http://localhost:5000/api/pricing | jq
     """
@@ -449,37 +451,41 @@ def setup_pricing():
         metric = _ensure_metric(name)
         billable_metric_id = metric.get("id")
         product_name=body.get("product").get("name")
+        rate_name=body.get('rate_card').get('name')
         # Ensure product + rate card (reuse from state when possible)
-        product_id, rate_card_id, created_product, created_rate_card = _ensure_product_and_rate_card(metric,product_name)
+        product_id, rate_card_id, created_product, created_rate_card = _ensure_product_and_rate_card(metric,product_name,rate_name)
 
         # Add per-tier rates only when we just created either the product or rate card
         created_rates = {}
         if created_product or created_rate_card:
-            for image_type, cents in BILLABLE_PRICES.items():
+            rate_card=body.get("rate_card")
+            rates=rate_card.get("rates")
+            effective_date=rate_card.get("effective_at")
+            for rate in rates:
                 r = client.add_flat_rate(
                     rate_card_id=rate_card_id,
                     product_id=product_id,
-                    price_cents=int(cents),
-                    starting_at=RATE_EFFECTIVE_AT,
-                    pricing_group_values={"image_type": image_type},
+                    price_cents=rate["price_cents"],
+                    starting_at=effective_date,
+                    pricing_group_values={"region":rate["region"],"provider":rate["provider"]},
                 )
                 rid = r.get("id") or r.get("rate_id")
-                created_rates[image_type] = {"id": rid, "price_cents": int(cents)}
+                created_rates[str(rate["region"])+', '+rate["provider"]] = {"id": rid, "price_cents": int(rate["price_cents"])}
 
         # Persist IDs so future runs can reuse the same product/rate card
-        state = _load_state()
-        state.update({
-            "metric_id": billable_metric_id,
-            "product_id": product_id,
-            "rate_card_id": rate_card_id,
-        })
-        _save_state(state)
+        # state = _load_state()
+        # state.update({
+        #     "metric_id": billable_metric_id,
+        #     "product_id": product_id,
+        #     "rate_card_id": rate_card_id,
+        # })
+        # _save_state(state)
 
  
         payload = {
             "success": True,
-            "product": {"id": product_id, "name": PRODUCT_NAME},
-            "rate_card": {"id": rate_card_id, "name": RATE_CARD_NAME},
+            "product": {"id": product_id, "name": product_name},
+            "rate_card": {"id": rate_card_id, "name": rate_name},
             # Only includes rates created in this call (empty on reuse)
             "rates": created_rates,
         }
