@@ -1,0 +1,7 @@
+Size,Warehouse,price_cents
+small,aws,54
+small,gcp,49
+medium,aws,199
+medium,gcp,089
+large,aws,382
+large,gcp,178

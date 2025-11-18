@@ -9,7 +9,7 @@ events = [
 
 ]
 
-url = "http://127.0.0.1:5050/api/generate"
+url = "http://127.0.0.1:5050/api/ingress"
 customer_id = "demo_mscott@dunder.com"
 
 for e in events:
