@@ -52,3 +52,4 @@ payload = csv_to_pricing_payload(
     effective_at="2025-11-16T00:00:00Z"
 )
 
+print(payload)

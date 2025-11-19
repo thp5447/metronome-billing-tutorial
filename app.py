@@ -221,16 +221,6 @@ def data_ingress():
     """
     data = request.get_json(silent=True) or {}
 
-    # Prefer customer_id, fallback to ingest_alias.
-    state = _load_state()
-    customer_id = state.get("customer_id")
-    ingest_alias = state.get("ingest_alias")
-    identifier = customer_id or ingest_alias
-    if not identifier:
-        return jsonify({
-            "error": "No customer configured. Create a customer first via POST /api/customers.",
-        }), 400
-
     # Validate tier against configured taxonomy (no state dependency)
     prop=data.get("properties",{})
     size=(prop.get("size") or "").strip().lower()
@@ -246,20 +236,17 @@ def data_ingress():
 
    
 
-    # Build properties as strings per Metronome guidelines
     properties = {
         "size": size,
         "warehouse": warehouse,
-        "hours": hours,  # whatever you want to track/count
+        "hours": hours,  
     }
-
-  
+    
+    customer_id=(data.get("customer_id") or "").strip()
+    identifier=customer_id
     transaction_id = (data.get("transaction_id") or "").strip()
-    # If client didn't provide a tx id, generate a deterministic server-side id
-    if not transaction_id:
-        transaction_id = _next_tx_id(customer_id=customer_id or ingest_alias, tier=tier)
 
-    # Always use server time (UTC) for this episode
+
     timestamp = datetime.now(timezone.utc)
     ts_str = timestamp.astimezone(timezone.utc).replace(microsecond=0).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -355,7 +342,7 @@ def setup_pricing():
     Quick Curl:
       curl -sS -X POST http://localhost:5050/api/pricing \
         -H "Content-Type: application/json" \
-        -d @product_and_rates.json
+        -d @extended_rates.json
     """
     try:
         body = request.get_json(force=True)
@@ -485,6 +472,7 @@ def setup_contract():
             rate_card_id=rate_card_id,
             starting_at=CONTRACT_START_AT,
         )
+        
         contract_id = contract.get("id")
         if not contract_id:
             return jsonify({"error": "Failed to create contract"}), 500
