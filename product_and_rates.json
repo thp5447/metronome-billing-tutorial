@@ -1,5 +1,5 @@
 {
-  "metric_name": "Raindrop Data Ingress2",
+  "metric_name": "Raindrop Data Ingress",
   "group_keys": ["region", "provider"],
   "property_filters": [
     {"name": "region", "exists": true},

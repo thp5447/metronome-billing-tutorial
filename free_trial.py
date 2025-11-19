@@ -1,94 +1,50 @@
-import os
 import requests
+from config import METRONOME_BEARER_TOKEN
 import json
-from datetime import datetime
+# url = "https://api.metronome.com/v2/contracts/get"
 
-METRONOME_TOKEN = os.environ["METRONOME_BEARER_TOKEN"]
+# payload = {
+#     "customer_id": "1bdadc42-83a0-4f95-bde4-ed9c1fef200d",
+#     "contract_id": "f2c00742-0474-41e9-a5d1-68c2abb64aa7",
+# }
+# headers = {
+#     "Authorization": f"Bearer {METRONOME_BEARER_TOKEN}",
+#     "Content-Type": "application/json"
+# }
 
-# --- CONFIG ---
-CUSTOMER_ID = "7df46c71-45e4-43bd-9a14-c898a2b02efc"
-CONTRACT_ID = "e344e1d7-c43e-458b-a673-6d6d7f6db207"
+# response = requests.post(url, json=payload, headers=headers)
 
-# Example rate cents per unit
-UNIT_PRICE_CENTS = 2500  # $25.00 per unit usage event
+# print(json.dumps(response.json(), indent=4))
+# customer_id= "1bdadc42-83a0-4f95-bde4-ed9c1fef200d"
+# invoice_id="20de3058-4d13-5970-8621-2fa79c48da87"
 
+# url = "https://api.metronome.com/v1/customers/{customer_id}/invoices/commits-and-credits"
 
-def get_remaining_prepaid_balance(customer_id: str):
-    """
-    Returns remaining prepaid balance (in cents) for the given customer.
-    """
+# headers = {"Authorization": f"Bearer {METRONOME_BEARER_TOKEN}"}
 
-    url = "https://api.metronome.com/v1/contracts/customerBalances/list"
-    headers = {
-        "Authorization": f"Bearer {METRONOME_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "customer_id": customer_id,
-        "include_balance": True,
-        "include_ledgers": False
-    }
+# response = requests.get(url, headers=headers)
 
-    response = requests.post(url, json=payload, headers=headers)
-    response.raise_for_status()
-    data = response.json()["data"]
-
-    # Filter only prepaid commits
-    prepaid = [entry for entry in data if entry.get("type") == "PREPAID"]
-
-    if not prepaid:
-        return 0
-
-    # Assume only one prepaid commit for simplicity
-    return prepaid[0].get("balance", 0)
+# print(response.json())
 
 
-def calculate_usage_cost(units: int) -> int:
-    """
-    Computes the price of a usage event in cents.
-    """
-    return units * UNIT_PRICE_CENTS
+import requests
+
+url = "https://api.metronome.com/v1/contracts/customerBalances/list"
+
+payload = {
+    "customer_id": "1bdadc42-83a0-4f95-bde4-ed9c1fef200d",
+    "id": "36d43e41-90d4-4e6c-a2fc-07d2e657df76",
+    "include_ledgers": True
+}
+headers = {
+    "Authorization": f"Bearer {METRONOME_BEARER_TOKEN}",
+    "Content-Type": "application/json"
+}
+
+response = requests.post(url, json=payload, headers=headers)
 
 
-def send_usage_event(customer_id: str, units: int):
-    """
-    Attempts to send a usage event. Declines if cost exceeds remaining prepaid balance.
-    """
-
-    # Step 1 — Check balance
-    remaining = get_remaining_prepaid_balance(customer_id)
-    cost = calculate_usage_cost(units)
-
-    print(f"Remaining credit: {remaining} cents")
-    print(f"Cost of this usage: {cost} cents")
-
-    if cost > remaining:
-        print("❌ Declining usage: exceeds remaining credit.")
-        return False
-
-    # Step 2 — Send usage event to Metronome
-    url = "https://api.metronome.com/v1/ingest"
-    headers = {
-        "Authorization": f"Bearer {METRONOME_TOKEN}",
-        "Content-Type": "application/json"
-    }
-
-    usage_event = {
-        "event_type": "compute_hours",
-        "timestamp": datetime.utcnow().isoformat() + "Z",
-        "customer_id": customer_id,
-        "properties": {
-            "units": units
-        }
-    }
-
-    response = requests.post(url, json={"events": [usage_event]}, headers=headers)
-    response.raise_for_status()
-
-    print("✅ Usage event accepted and sent.")
-    return True
-
-
-# --- Example run ---
-if __name__ == "__main__":
-    send_usage_event(CUSTOMER_ID, units=2)
+credit=response.json()['data'][0]["ledger"][0]["amount"]
+consumed=response.json()['data'][0]["ledger"][1]["amount"]
+print(f'Remaining Credits: {(credit+consumed)/100}')
+#print(json.dumps(response.json(), indent=4))
