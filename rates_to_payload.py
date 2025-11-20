@@ -46,7 +46,7 @@ def csv_to_pricing_payload(csv_file_path: str,
 
 payload = csv_to_pricing_payload(
     csv_file_path="proposed_rates.csv",  
-    metric_name="Raindrop Data Ingress2",
+    metric_name="Raindrop Data Ingress",
     product_name="Data Ingress Product",
     rate_card_name="Data Ingress Rate Card",
     effective_at="2025-11-16T00:00:00Z"

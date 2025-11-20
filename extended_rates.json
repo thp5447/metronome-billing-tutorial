@@ -1,5 +1,5 @@
 {
-  "metric_name": "Raindrop Data Ingress 2",
+  "metric_name": "Raindrop Data Ingress",
   "group_keys": [
     "region",
     "provider"
@@ -15,11 +15,11 @@
     }
   ],
   "product": {
-    "name": "Data Ingress Product 2",
+    "name": "Data Ingress Product",
     "type": "USAGE"
   },
   "rate_card": {
-    "name": "Data Ingress Rate Card 2",
+    "name": "Data Ingress Rate Card",
     "effective_at": "2025-11-16T00:00:00Z",
     "rates": [
       {
