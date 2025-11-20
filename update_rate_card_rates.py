@@ -16,7 +16,7 @@ args=parser.parse_args()
 rates=pd.read_csv(args.csv)
 rate_card=args.rate_card_name
 product_id='84b5ae00-0a84-479b-a7df-2a60bb6b728c'
-rate_card_id='13b41c02-7a45-4221-8b44-bd0ebda5c057'
+rate_card_id='765c8f32-9554-4a96-8c79-620847828c55'
 effective_date=args.effective_at
 
 for index, rate in rates.iterrows():
