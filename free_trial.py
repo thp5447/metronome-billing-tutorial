@@ -7,7 +7,6 @@ def get_credit_balance():
 
     payload = {
         "customer_id": "dda4254e-429c-4d1e-87f9-1c1134c16003",
-        "id": "f8cf3130-a459-4182-97e0-3a2e42c65e32",
         "include_ledgers": True
     }
     headers = {
@@ -44,4 +43,4 @@ def new_contract():
     response=requests.post('https://api.metronome.com/v1/contracts/create',json=payload,headers=headers)
     return response
 
-#print(new_contract())
+print(new_contract())
